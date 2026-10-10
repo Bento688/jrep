@@ -28,40 +28,52 @@ public class Main implements Callable<Integer> {
     @Parameters(index = "1", arity = "1..*", description = "The file names to search for")
     private String[] files;
 
+    public record FileSearchResult(boolean found, boolean issues) {}
+
     @Override
     public Integer call() {
         // get the list of paths
         List<Path> paths = Arrays.stream(files).map(Path::of).toList();
-        boolean multipleFiles = paths.size() > 1;
-        String cleanPattern = ignoreCase ? pattern.toLowerCase(Locale.ROOT) : pattern;
 
-        // flags
+        // call a single process files method
+        FileSearchResult result = processFiles(paths, pattern, ignoreCase);
+
+        if (result.issues) {
+            return 2;
+        } else if (result.found) {
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+
+    private static boolean patternInLine(String line, String pattern) {
+        return line.contains(pattern);
+    }
+
+    private static FileSearchResult processFiles(List<Path> paths, String pattern, boolean ignoreCase) {
         boolean found = false;
         boolean issues = false;
 
-        if (multipleFiles) {
-            for (Path path : paths) {
-                try {
-                    List<String> lines = Files.readAllLines(path);
+        boolean usePrefix = paths.size() > 1;
+        String prefix = "";
 
-                    for (String line : lines) {
-                        if (ignoreCase ? line.toLowerCase(Locale.ROOT).contains(cleanPattern) : line.contains(cleanPattern)) {
-                            System.out.println(path + ":" + line);
-                            found = true;
-                        }
-                    }
-                } catch (IOException e) {
-                    System.err.println("Error: " + e);
-                    issues = true;
-                }
+        String cleanPattern = ignoreCase ? pattern.toLowerCase(Locale.ROOT) : pattern;
+
+        for (Path path : paths) {
+            if (usePrefix) {
+                prefix = path.toString() + ":";
             }
-        } else {
+
             try {
-                List<String> lines = Files.readAllLines(paths.getFirst());
+                List<String> lines = Files.readAllLines(path);
+
                 for (String line : lines) {
-                    if (ignoreCase ? line.toLowerCase(Locale.ROOT).contains(cleanPattern) : line.contains(cleanPattern)) {
-                        System.out.println(line);
-                        found = true;
+                    String compareLine =  ignoreCase ? line.toLowerCase(Locale.ROOT) : line;
+                    boolean matches = Main.patternInLine(compareLine, cleanPattern);
+                    found = matches || found;
+                    if (matches) {
+                        System.out.println(prefix + line);
                     }
                 }
             } catch (IOException e) {
@@ -69,14 +81,7 @@ public class Main implements Callable<Integer> {
                 issues = true;
             }
         }
-
-        if (issues) {
-            return 2;
-        } else if (found) {
-            return 0;
-        } else {
-            return 1;
-        }
+        return new FileSearchResult(found, issues);
     }
 
     public static void main(String[] args) {
