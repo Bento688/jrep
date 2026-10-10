@@ -8,6 +8,7 @@ import picocli.CommandLine.Parameters;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
@@ -29,29 +30,52 @@ public class Main implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        try {
-            // get the current file as a path
-            Path path = Path.of(files[0]);
-            // read the lines from that path
-            List<String> lines = Files.readAllLines(path);
+        // get the list of paths
+        List<Path> paths = Arrays.stream(files).map(Path::of).toList();
+        boolean multipleFiles = paths.size() > 1;
+        String cleanPattern = ignoreCase ? pattern.toLowerCase(Locale.ROOT) : pattern;
 
-            boolean found = false;
-            // print the lines one by one
-            String cleanPattern = ignoreCase ? pattern.toLowerCase(Locale.ROOT) : pattern;
-            for (String line : lines) {
-                if (ignoreCase ? line.toLowerCase(Locale.ROOT).contains(cleanPattern) : line.contains(cleanPattern)) {
-                    System.out.println(line);
-                    found = true;
+        // flags
+        boolean found = false;
+        boolean issues = false;
+
+        if (multipleFiles) {
+            for (Path path : paths) {
+                try {
+                    List<String> lines = Files.readAllLines(path);
+
+                    for (String line : lines) {
+                        if (ignoreCase ? line.toLowerCase(Locale.ROOT).contains(cleanPattern) : line.contains(cleanPattern)) {
+                            System.out.println(path + ":" + line);
+                            found = true;
+                        }
+                    }
+                } catch (IOException e) {
+                    System.err.println("Error: " + e);
+                    issues = true;
                 }
             }
-            if (found) {
-                return 0;
-            } else {
-                return 1;
+        } else {
+            try {
+                List<String> lines = Files.readAllLines(paths.getFirst());
+                for (String line : lines) {
+                    if (ignoreCase ? line.toLowerCase(Locale.ROOT).contains(cleanPattern) : line.contains(cleanPattern)) {
+                        System.out.println(line);
+                        found = true;
+                    }
+                }
+            } catch (IOException e) {
+                System.err.println("Error: " + e);
+                issues = true;
             }
-        } catch (IOException e) {
-            System.err.println("Error: " + e);
+        }
+
+        if (issues) {
             return 2;
+        } else if (found) {
+            return 0;
+        } else {
+            return 1;
         }
     }
 
