@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Callable;
 
 @Command(name = "jrep", description = "A simple grep implementation in Java", mixinStandardHelpOptions = true)
@@ -17,8 +18,8 @@ public class Main implements Callable<Integer> {
     @Option(names = {"-i", "--ignore-case"}, description = "Ignore case distinctions")
     private boolean ignoreCase;
 
-    @Option(names = {"-d", "--directory"}, description = "The directory in which the search should be conducted")
-    private String directory;
+//    @Option(names = {"-d", "--directory"}, description = "The directory in which the search should be conducted")
+//    private String directory;
 
     @Parameters(index = "0", arity = "1", description = "Pattern to search for")
     private String pattern;
@@ -36,12 +37,11 @@ public class Main implements Callable<Integer> {
 
             boolean found = false;
             // print the lines one by one
+            String cleanPattern = ignoreCase ? pattern.toLowerCase(Locale.ROOT) : pattern;
             for (String line : lines) {
-                if (line.contains(pattern)) {
+                if (ignoreCase ? line.toLowerCase(Locale.ROOT).contains(cleanPattern) : line.contains(cleanPattern)) {
                     System.out.println(line);
                     found = true;
-                } else {
-                    continue;
                 }
             }
             if (found) {
