@@ -19,9 +19,6 @@ public class Main implements Callable<Integer> {
     @Option(names = {"-i", "--ignore-case"}, description = "Ignore case distinctions")
     private boolean ignoreCase;
 
-//    @Option(names = {"-d", "--directory"}, description = "The directory in which the search should be conducted")
-//    private String directory;
-
     @Parameters(index = "0", arity = "1", description = "Pattern to search for")
     private String pattern;
 
@@ -38,9 +35,9 @@ public class Main implements Callable<Integer> {
         // call a single process files method
         FileSearchResult result = processFiles(paths, pattern, ignoreCase);
 
-        if (result.issues) {
+        if (result.issues()) {
             return 2;
-        } else if (result.found) {
+        } else if (result.found()) {
             return 0;
         } else {
             return 1;
@@ -56,14 +53,11 @@ public class Main implements Callable<Integer> {
         boolean issues = false;
 
         boolean usePrefix = paths.size() > 1;
-        String prefix = "";
 
         String cleanPattern = ignoreCase ? pattern.toLowerCase(Locale.ROOT) : pattern;
 
         for (Path path : paths) {
-            if (usePrefix) {
-                prefix = path.toString() + ":";
-            }
+            String prefix = usePrefix ? path + ":" : "";
 
             try {
                 List<String> lines = Files.readAllLines(path);
